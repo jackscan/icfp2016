@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"math"
-	"math/big"
 )
 
 type drone struct {
@@ -33,12 +32,12 @@ func (dr *drone) search(prob *problem, startline int, rotate, flip bool) bool {
 		v.copy(a)
 	}
 
-	var origin, v10 vec
-	v10.set(1, 0)
+	// var origin, v10 vec
+	// v10.set(1, 0)
 
-	// transform startline to bottom square edge
-	v.neg()
-	prob.translate(&v)
+	// // transform startline to bottom square edge
+	// v.neg()
+	// prob.translate(&v)
 
 	// fmt.Printf("d: %s\n", d.String())
 
@@ -50,34 +49,43 @@ func (dr *drone) search(prob *problem, startline int, rotate, flip bool) bool {
 		dlen.SetFloat64(math.Sqrt(f))
 	}
 
-	d.div(dlen)
-	d.add(&v10)
+	// d.div(dlen)
+	// d.add(&v10)
+	//
+	// if d.isZero() {
+	// 	d.set(0, 1)
+	// }
+	//
+	// // fmt.Printf("%s, %s\n", v.String(), d.String())
+	//
+	// // d.set(1, 1)
+	// prob.mirror(&origin, &d)
+	//
+	// if flip {
+	// 	var two big.Rat
+	// 	two.SetInt64(2)
+	// 	origin.copy(a).add(b)
+	// 	origin.div(&two)
+	// 	prob.mirror(&origin, &v10)
+	// }
 
-	if d.isZero() {
-		d.set(0, 1)
-	}
-
-	// fmt.Printf("%s, %s\n", v.String(), d.String())
-
-	// d.set(1, 1)
-	prob.mirror(&origin, &d)
-
-	if flip {
-		var two big.Rat
-		two.SetInt64(2)
-		origin.copy(a).add(b)
-		origin.div(&two)
-		prob.mirror(&origin, &v10)
-	}
+	// // add srcpoints and dstpoints for startline
+	// dr.dstpoints = make([]vec, 2)
+	// dr.dstpoints[0].set(0, 0)
+	// dr.dstpoints[1].x.Set(dlen)
+	// dr.dstpoints[1].y.SetInt64(0)
+	// dr.srcpoints = make([]vec, 2)
+	// dr.srcpoints[0].copy(&dr.dstpoints[0])
+	// dr.srcpoints[1].copy(&dr.dstpoints[1])
 
 	// add srcpoints and dstpoints for startline
 	dr.dstpoints = make([]vec, 2)
-	dr.dstpoints[0].set(0, 0)
-	dr.dstpoints[1].x.Set(dlen)
-	dr.dstpoints[1].y.SetInt64(0)
+	dr.dstpoints[0].copy(&v)
+	dr.dstpoints[1].copy(&v).add(&d)
 	dr.srcpoints = make([]vec, 2)
-	dr.srcpoints[0].copy(&dr.dstpoints[0])
-	dr.srcpoints[1].copy(&dr.dstpoints[1])
+	dr.srcpoints[0].set(0, 0)
+	dr.srcpoints[1].x.Set(dlen)
+	dr.srcpoints[1].y.SetInt64(0)
 
 	fmt.Println("problem:\n", dr.problem.String())
 	fmt.Println("start:\n", dr.String())
@@ -132,13 +140,14 @@ func (dr *drone) addFacets(srcline *line, flip bool) bool {
 	dstfacet = dr.problem.skeleton.findFacet(0, dstfacet)
 	for dstfacet != nil {
 
-		// fmt.Println(linestrip2str(dstfacet))
+		fmt.Println("dstfacet:", linestrip2str(dstfacet))
 
 		// add facet into src facet
-		srcfacet := dr.addFacet(srcline, &dstline, dstfacet, flip)
+		srcfacet := dr.addFacet(srcline, dstfacet, flip)
 		if srcfacet != nil {
 
 			fmt.Println("added facet:", facetString(srcfacet))
+			fmt.Println("new:", dr.String())
 
 			n := len(srcfacet)
 			i1 := n - 1
@@ -170,14 +179,15 @@ func (dr *drone) addFacets(srcline *line, flip bool) bool {
 	return false
 }
 
-func (dr *drone) addFacet(srcline, dstline *line, dstfacet []int, flip bool) []int {
+func (dr *drone) addFacet(srcline *line, dstfacet []int, flip bool) []int {
 
-	if !flip {
-		rev := make([]int, len(dstfacet))
-		copy(rev, dstfacet)
-		reverseFacet(rev)
-		dstfacet = rev
-	}
+	// if !flip {
+	// 	rev := make([]int, len(dstfacet))
+	// 	copy(rev, dstfacet)
+	// 	reverseFacet(rev)
+	// 	dstfacet = rev
+	// 	fmt.Println("reversed dstfacet:", linestrip2str(dstfacet))
+	// }
 
 	p := dr.skeleton.getPolygon(dstfacet[:len(dstfacet)-1])
 
@@ -199,9 +209,10 @@ func (dr *drone) addFacet(srcline, dstline *line, dstfacet []int, flip bool) []i
 
 	p.mirror(&srca, &axis)
 
-	if flip {
+	if !flip {
 		p.mirror(&srca, &srcd)
-		fmt.Println("mirror")
+	} else {
+		fmt.Println("flip")
 	}
 
 	fmt.Println("transformed\n", p.String())
@@ -222,7 +233,20 @@ func (dr *drone) addFacet(srcline, dstline *line, dstfacet []int, flip bool) []i
 
 	srcfacet := make([]int, len(p.vertices))
 	for i := range p.vertices {
-		srcfacet[i] = dr.addPoint(&p.vertices[i])
+		var added bool
+		v := &p.vertices[i]
+		srcfacet[i], added = dr.addPoint(v)
+		if added {
+			var dstv vec
+			dstv.copy(v)
+			// reverse transformation
+			if !flip {
+				dstv.mirror(&srca, &srcd)
+			}
+			dstv.mirror(&srca, &axis)
+			fmt.Println("adding dstpoint", dstv.String())
+			dr.dstpoints = append(dr.dstpoints, dstv)
+		}
 	}
 
 	// since polygon.overlaps is not correct check also if facet is new
@@ -238,16 +262,16 @@ func (dr *drone) addFacet(srcline, dstline *line, dstfacet []int, flip bool) []i
 	return srcfacet
 }
 
-func (dr *drone) addPoint(p *vec) int {
+func (dr *drone) addPoint(p *vec) (int, bool) {
 	for i := range dr.srcpoints {
 		if p.equals(&dr.srcpoints[i]) {
-			return i
+			return i, false
 		}
 	}
-	fmt.Println("adding point", p.String())
+	fmt.Println("adding srcpoint", p.String())
 	r := len(dr.srcpoints)
 	dr.srcpoints = append(dr.srcpoints, *p)
-	return r
+	return r, true
 }
 
 func (dr *drone) String() string {
