@@ -404,7 +404,7 @@ func facetsContain(facets [][]int, f []int) bool {
 
 func reverseFacet(facet []int) {
 	n := len(facet)
-	for i := 0; i < n/2-1; i++ {
+	for i := 0; i < n/2; i++ {
 		j := n - 1 - i
 		facet[i], facet[j] = facet[j], facet[i]
 	}

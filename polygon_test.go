@@ -262,3 +262,33 @@ func TestCounterclockwise(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestReverseFacet(t *testing.T) {
+	{
+		facet := []int{23, 42, 2, 3, 4}
+		reverseFacet(facet)
+
+		expected := []int{4, 3, 2, 42, 23}
+
+		for i := range facet {
+			if facet[i] != expected[i] {
+				fmt.Println("facet not reversed:", linestrip2str(facet))
+				t.Fail()
+			}
+		}
+	}
+
+	{
+		facet := []int{23, 42, 2, 3}
+		reverseFacet(facet)
+
+		expected := []int{3, 2, 42, 23}
+
+		for i := range facet {
+			if facet[i] != expected[i] {
+				fmt.Println("facet not reversed:", linestrip2str(facet))
+				t.Fail()
+			}
+		}
+	}
+}
