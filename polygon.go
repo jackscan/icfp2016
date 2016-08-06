@@ -359,8 +359,8 @@ func (s *skeleton) findNextFacet(prev []int) []int {
 
 func (s *skeleton) getPolygon(facet []int) *polygon {
 	var p polygon
-	p.vertices = make([]vec, len(facet)-1)
-	for i := 0; i < len(facet)-1; i++ {
+	p.vertices = make([]vec, len(facet))
+	for i := 0; i < len(facet); i++ {
 		p.vertices[i].copy(&s.vertices[facet[i]])
 	}
 	return &p
