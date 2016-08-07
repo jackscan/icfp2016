@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math/big"
 	"testing"
 )
 
@@ -77,6 +78,158 @@ func TestOverlap(t *testing.T) {
 
 	if !p2.overlaps(&p3) || !p3.overlaps(&p2) {
 		fmt.Println(p2.String(), p3.String())
+	}
+}
+
+func TestOverlap2(t *testing.T) {
+	str := "4  1/2,0  1/2,1/2  0,1  0,0\n" +
+		"4  1,1  0,1  0,1/2  1/2,1/2"
+
+	var tokens = tokenize(str)
+	var p1, p2 polygon
+	pos := p1.parse(tokens)
+	p2.parse(tokens[pos:])
+
+	if !p1.overlaps(&p2) || !p2.overlaps(&p1) {
+		// fmt.Println(p1.String(), p2.String())
+		t.Fail()
+	}
+}
+
+func TestOverlap3(t *testing.T) {
+	str := "" +
+		"4  0,0 4,0 4,2 0,2\n" +
+		"4  4,0 6,0 6,2 4,2\n" +
+		"4  1,0 3,0 3,2 1,2\n" +
+		"4  0,-1 4,-1 4,3 0,3\n" +
+		"4  0,1 2,-1 4,1 2,3\n" +
+		"4  1,-1 3,-1 3,3 1,3\n" +
+		"4 3,0 3,-2 5,-2 5,0"
+
+	var tokens = tokenize(str)
+	var a, b, c, d, e, f, g polygon
+	pos := a.parse(tokens)
+	pos += b.parse(tokens[pos:])
+	pos += c.parse(tokens[pos:])
+	pos += d.parse(tokens[pos:])
+	pos += e.parse(tokens[pos:])
+	pos += f.parse(tokens[pos:])
+	g.parse(tokens[pos:])
+
+	// fmt.Println(a.String())
+	// fmt.Println(b.String())
+	// fmt.Println(c.String())
+	// fmt.Println(d.String())
+
+	if a.overlaps(&b) || b.overlaps(&a) {
+		t.Fail()
+	}
+	if !a.overlaps(&c) || !c.overlaps(&a) {
+		t.Fail()
+	}
+	if !d.overlaps(&e) || !e.overlaps(&d) {
+		t.Fail()
+	}
+	if !a.overlaps(&f) || !f.overlaps(&a) {
+		t.Fail()
+	}
+	if !d.overlaps(&f) || !f.overlaps(&d) {
+		t.Fail()
+	}
+	if !d.overlaps(&c) || !c.overlaps(&d) {
+		t.Fail()
+	}
+	if g.overlaps(&c) || c.overlaps(&g) {
+		t.Fail()
+	}
+}
+
+func TestOrthdot(t *testing.T) {
+	var a, b vec
+	a.set(4, 2)
+	b.set(2, -1)
+
+	var expected big.Rat
+	expected.SetInt64(-8)
+
+	if a.orthdot(&b).Cmp(&expected) != 0 {
+		fmt.Println("orthdot:", a.orthdot(&b))
+		t.Fail()
+	}
+}
+
+func TestLinesIntersect(t *testing.T) {
+	var a, b, c, d vec
+
+	// test t-junction
+	a.set(-2, -1)
+	b.set(2, 1)
+	c.set(0, 0)
+	d.set(2, -1)
+
+	if !linesIntersect(&b, &a, &c, &d) || !linesIntersect(&c, &d, &b, &a) {
+		t.Fail()
+	}
+
+	if !linesIntersect(&b, &a, &d, &c) || !linesIntersect(&d, &c, &b, &a) {
+		t.Fail()
+	}
+
+	if linesIntersect(&a, &b, &c, &d) || linesIntersect(&c, &d, &a, &b) {
+		t.Fail()
+	}
+
+	if !linesIntersect(&b, &a, &c, &d) || !linesIntersect(&c, &d, &b, &a) {
+		t.Fail()
+	}
+
+	// test overlap
+	d.set(6, 3)
+	if !linesIntersect(&a, &b, &c, &b) || !linesIntersect(&c, &b, &a, &b) {
+		t.Fail()
+	}
+
+	if !linesIntersect(&a, &b, &c, &d) || !linesIntersect(&c, &d, &a, &b) {
+		t.Fail()
+	}
+
+	if linesIntersect(&b, &a, &c, &d) || linesIntersect(&c, &d, &b, &a) {
+		t.Fail()
+	}
+
+	if linesIntersect(&a, &c, &c, &d) || linesIntersect(&c, &d, &a, &c) {
+		t.Fail()
+	}
+
+	// test parallel
+	c.set(1, 0)
+	d.set(3, 1)
+	if linesIntersect(&a, &b, &c, &d) || linesIntersect(&c, &d, &a, &b) {
+		t.Fail()
+	}
+
+	// test intersect
+	if !linesIntersect(&a, &d, &c, &b) || !linesIntersect(&c, &b, &a, &d) {
+		t.Fail()
+	}
+	if !linesIntersect(&d, &a, &c, &b) || !linesIntersect(&c, &b, &d, &a) {
+		t.Fail()
+	}
+
+	// test separate
+	d.set(3, 0)
+	if linesIntersect(&a, &b, &c, &d) || linesIntersect(&c, &d, &a, &b) {
+		t.Fail()
+	}
+	if linesIntersect(&b, &a, &c, &d) || linesIntersect(&c, &d, &b, &a) {
+		t.Fail()
+	}
+
+	// test touching
+	if linesIntersect(&a, &b, &b, &d) || linesIntersect(&b, &d, &a, &b) {
+		t.Fail()
+	}
+	if linesIntersect(&b, &a, &b, &d) || linesIntersect(&b, &d, &b, &a) {
 		t.Fail()
 	}
 }

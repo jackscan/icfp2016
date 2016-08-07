@@ -68,6 +68,15 @@ func (v *vec) dot(o *vec) *big.Rat {
 	return r.Add(r, &tmp)
 }
 
+func (v *vec) orthdot(o *vec) *big.Rat {
+	r := new(big.Rat)
+	var tmp big.Rat
+	r.Set(&v.x).Mul(r, &o.y)
+	tmp.Set(&v.y).Mul(&tmp, &o.x)
+	r.Sub(r, &tmp)
+	return r
+}
+
 func (v *vec) normalize() {
 	len2 := v.dot(v)
 	f, _ := len2.Float64()
@@ -200,29 +209,119 @@ func (p *polygon) overlaps(o *polygon) bool {
 	// NOTE: assuming polygons are convex and defined counterclockwise
 	// TODO: also assuming polygons do not overlap without containing vertices of other polygon
 
-	anyOutside := false
-
 	for i := range o.vertices {
 		if p.pointIsInsideConvex(&o.vertices[i]) {
 			return true
-		} else if p.pointIsOutsideConvex(&o.vertices[i]) {
-			anyOutside = true
 		}
 	}
 
 	for i := range p.vertices {
 		if o.pointIsInsideConvex(&p.vertices[i]) {
 			return true
-		} else if o.pointIsOutsideConvex(&p.vertices[i]) {
-			anyOutside = true
 		}
 	}
 
-	return !anyOutside
+	i1 := len(p.vertices) - 1
+	for i2 := 0; i2 < len(p.vertices); i2++ {
+		a := p.vertices[i1]
+		b := p.vertices[i2]
+		j1 := len(o.vertices) - 1
+		for j2 := 0; j2 < len(o.vertices); j2++ {
+			c := o.vertices[j1]
+			d := o.vertices[j2]
+			if linesIntersect(&a, &b, &c, &d) {
+				return true
+			}
+			j1 = j2
+		}
+		i1 = i2
+	}
+
+	return false
 }
 
 var zero = big.NewRat(0, 1)
 var one = big.NewRat(1, 1)
+
+func linesIntersect(a, b, c, d *vec) bool {
+	var e, f, g vec
+	e.copy(b).sub(a)
+	f.copy(d).sub(c)
+	g.copy(a).sub(c)
+
+	det := e.orthdot(&f)
+
+	// fmt.Println("det", det.RatString())
+
+	if det.Sign() == 0 {
+		// check overlap
+		if g.orthdot(&e).Sign() != 0 {
+			// parallel lines
+			// fmt.Println("parallel", det.RatString(), g.orthdot(&e).RatString(), "f:", f.String(), "e:", e.String())
+			return false
+		}
+		if e.dot(&f).Sign() < 0 {
+			// facing different directions
+			// fmt.Println("opposite directions")
+			return false
+		}
+		s := g.dot(&f)
+		s.Quo(s, f.dot(&f))
+		t := g.dot(&e)
+		t.Quo(t, e.dot(&e))
+		t.Neg(t)
+
+		// fmt.Println("overlap?", s.RatString(), t.RatString())
+
+		return (s.Cmp(zero) >= 0 && s.Cmp(one) < 0) ||
+			(t.Cmp(zero) >= 0 && t.Cmp(one) < 0)
+	}
+
+	// check if segments intersect
+	s := e.orthdot(&g)
+	t := f.orthdot(&g)
+	s = s.Quo(s, det)
+	t = t.Quo(t, det)
+
+	s0 := s.Cmp(zero)
+	s1 := s.Cmp(one)
+	t0 := t.Cmp(zero)
+	t1 := t.Cmp(one)
+
+	if s0 > 0 && s1 < 0 && t0 > 0 && t1 < 0 {
+		// lines cross
+		// fmt.Println("crossing")
+		return true
+	}
+
+	// fmt.Println(s0, s1, t0, t1)
+	// fmt.Println(s.RatString(), t.RatString())
+
+	// check for T intersection
+	if s0 == 0 && t0 > 0 && t1 < 0 {
+		// c touchs ab
+		// fmt.Println("c touchs ab")
+		return counterclockwise(a, b, d)
+	}
+	if s1 == 0 && t0 > 0 && t1 < 0 {
+		// d touchs ab
+		// fmt.Println("d touchs ab")
+		return counterclockwise(a, b, c)
+	}
+	if t0 == 0 && s0 > 0 && s1 < 0 {
+		// a touchs cd
+		// fmt.Println("a touchs cd")
+		return counterclockwise(c, d, b)
+	}
+	if t1 == 0 && s0 > 0 && s1 < 0 {
+		// b touchs cd
+		// fmt.Println("b touchs cd")
+		return counterclockwise(c, d, a)
+	}
+
+	// fmt.Println("no intersection")
+	return false
+}
 
 func (p *polygon) inUnitSquare() bool {
 	for _, v := range p.vertices {
@@ -436,6 +535,16 @@ func (p *polygon) String() string {
 	buf.WriteString(fmt.Sprintf("%d:\n", len(p.vertices)))
 	for i := 0; i < len(p.vertices); i++ {
 		buf.WriteString(fmt.Sprintf("\t%s, %s\n", p.vertices[i].x.RatString(), p.vertices[i].y.RatString()))
+	}
+
+	return buf.String()
+}
+
+func (p *polygon) StdString() string {
+	var buf bytes.Buffer
+	buf.WriteString(fmt.Sprintf("%d:", len(p.vertices)))
+	for i := 0; i < len(p.vertices); i++ {
+		buf.WriteString(fmt.Sprintf("  %s,%s", p.vertices[i].x.RatString(), p.vertices[i].y.RatString()))
 	}
 
 	return buf.String()
