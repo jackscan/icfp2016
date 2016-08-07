@@ -141,6 +141,23 @@ func (v *vec) mirror(o, a *vec) {
 	// fmt.Println("result: ", v.String())
 }
 
+func copyVecSlice(slice []vec) []vec {
+	result := make([]vec, len(slice))
+	for i := range slice {
+		result[i].copy(&slice[i])
+	}
+	return result
+}
+
+func copyFacets(facets [][]int) [][]int {
+	result := make([][]int, len(facets))
+	for i, f := range facets {
+		result[i] = make([]int, len(f))
+		copy(result[i], f)
+	}
+	return result
+}
+
 func (l *line) equals(o *line) bool {
 	return (l.a == o.a && l.b == o.b) || (l.b == o.a && l.a == o.b)
 }

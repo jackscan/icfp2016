@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -28,13 +27,17 @@ func main() {
 	var prob problem
 	prob.parse(string(probstr))
 
-	fmt.Printf("%s\n", string(probstr))
+	// fmt.Printf("%s\n", string(probstr))
 
 	var dr drone
+	dr.debug = true
 	s := dr.solve(&prob)
 	if s == nil {
 		log.Fatal("failed to find solution")
 	} else {
+		if s.inexact {
+			sname += "-inexact"
+		}
 		sfile, err := os.Create(sname)
 		if err != nil {
 			log.Fatal(err)
@@ -43,6 +46,6 @@ func main() {
 		sfile.WriteString(s.StdString())
 	}
 
-	fmt.Println("finished:", dr.String())
+	// fmt.Println("finished:", dr.String())
 
 }

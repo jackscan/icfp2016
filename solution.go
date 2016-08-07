@@ -6,9 +6,10 @@ import (
 )
 
 type solution struct {
-	src    []vec
-	dst    []vec
-	facets [][]int
+	src     []vec
+	dst     []vec
+	facets  [][]int
+	inexact bool
 }
 
 func (s *solution) mirror(pos, axis *vec) {
