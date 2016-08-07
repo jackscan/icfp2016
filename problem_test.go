@@ -1,9 +1,6 @@
 package main
 
-import (
-	"fmt"
-	"testing"
-)
+import "testing"
 
 func TestStartTranformation(t *testing.T) {
 
@@ -25,17 +22,12 @@ func TestStartTranformation(t *testing.T) {
 
 	prob.parse(str)
 
-	startline := 3
-	rotate := false
-	flip := true
-
 	// fmt.Printf("%s\n", prob.String())
 
 	var dr drone
-	if !dr.search(&prob, startline, rotate, flip) {
+	s := dr.solve(&prob)
+	if s == nil {
 		t.Fail()
 	}
-
-	fmt.Println("finish:", dr.String())
 
 }

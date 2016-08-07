@@ -445,3 +445,11 @@ func TestReverseFacet(t *testing.T) {
 		}
 	}
 }
+
+func TestFacetsHaveLine(t *testing.T) {
+	facets := [][]int{{2, 1, 4, 5}}
+
+	if !facetsHaveLine(facets, &line{5, 2}) {
+		t.Fail()
+	}
+}

@@ -518,6 +518,20 @@ func findLine(lines []line, l *line) int {
 	return -1
 }
 
+func facetsHaveLine(facets [][]int, l *line) bool {
+	for _, f := range facets {
+		a := f[len(f)-1]
+		for _, b := range f {
+			// fmt.Println(a, b)
+			if l.equals(&line{a, b}) {
+				return true
+			}
+			a = b
+		}
+	}
+	return false
+}
+
 func linestrip2str(strip []int) string {
 	var buf bytes.Buffer
 	for i := 0; i < len(strip); i++ {
