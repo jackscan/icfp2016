@@ -16,7 +16,7 @@
         - calculate transformation for s onto bottom square edge starting on left corner
         - 'a': for each possible facet in destination skeleton with line s
             - transform facet to source coordinates
-            - if facet is not unit square
+            - if facet is not in unit square
                 or does overlap any other polygon in source
                 - continue at 'a'
             - add polygon p to source
@@ -31,7 +31,8 @@
             - return solution
 
 #### Issues
-- The algorithm only considers skeleton lines and does not respect holes in problem.
-    To solve this the algorithm should be extended to check if the facet chosen
-    at 'a' overlaps with any hole polygon.
+- The algorithm only considers skeleton lines and does not respect holes in the
+    problem silhouette. To solve this the algorithm should also check if the
+    facet chosen at 'a' overlaps with any hole polygon.
+- A found solution may be too big. Algorithm should check this before returning success.
 - Any bug I haven't found yet ;)
