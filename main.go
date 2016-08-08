@@ -18,7 +18,7 @@ func main() {
 	flag.StringVar(&pname, "p", "problem.txt", "problem file")
 	flag.StringVar(&sname, "s", "solution.txt", "solution file to write")
 	flag.BoolVar(&debug, "d", false, "print debug info")
-	flag.StringVar(&probdir, "probdir", "", "solve problems listed in file")
+	flag.StringVar(&probdir, "probdir", "", "solve problems in directory")
 	flag.StringVar(&soldir, "soldir", "solutions", "folder to write solutions to")
 
 	flag.Parse()
