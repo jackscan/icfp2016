@@ -50,7 +50,11 @@ func main() {
 
 		pname := fmt.Sprintf("problem-%d.txt", p.ID)
 
-		if _, err := os.Stat(pname); os.IsNotExist(err) {
+		if _, err := os.Stat(pname); err == nil {
+			log.Printf("%s exists", pname)
+			// } else if _, err := os.Stat(pname + "-disabled"); err == nil {
+			// 	log.Printf("%s disabled exists", pname)
+		} else {
 			log.Println("fetching", pname)
 
 			time.Sleep(time.Second)
@@ -85,9 +89,6 @@ func main() {
 
 			// log.Println(string(body))
 			writeProblemFile(pname, body)
-
-		} else {
-			log.Printf("%s exists", pname)
 		}
 	}
 }

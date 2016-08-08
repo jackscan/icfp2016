@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+
+	"github.com/cznic/mathutil"
 )
 
 type vec struct {
@@ -120,8 +122,8 @@ func counterclockwise(a, b, c *vec) bool {
 
 func (v *vec) mirror(o, a *vec) {
 	a2 := a.dot(a)
-	if a2.Num().Int64() == 0 {
-		panic("invalid axis")
+	if a2.Sign() == 0 {
+		panic(fmt.Errorf("mirror %s, %s", o.String(), a.String()))
 	}
 	// fmt.Println("v, o, a: ", v.String(), o.String(), a.String())
 	var d vec
@@ -340,6 +342,69 @@ func linesIntersect(a, b, c, d *vec) bool {
 	return false
 }
 
+func getIntersection(a, b, c, d *vec) (*vec, *vec) {
+	var e, f, g vec
+	e.copy(b).sub(a)
+	f.copy(d).sub(c)
+	g.copy(a).sub(c)
+
+	det := e.orthdot(&f)
+
+	// fmt.Println("det", det.RatString())
+
+	if det.Sign() == 0 {
+		// overlap or parallel
+		return nil, nil
+	}
+
+	// check if segments intersect
+	s := e.orthdot(&g)
+	t := f.orthdot(&g)
+	s = s.Quo(s, det)
+	t = t.Quo(t, det)
+
+	s0 := s.Cmp(zero)
+	s1 := s.Cmp(one)
+	t0 := t.Cmp(zero)
+	t1 := t.Cmp(one)
+
+	if s0 > 0 && s1 < 0 && t0 > 0 && t1 < 0 {
+		// lines cross
+		// fmt.Println("crossing")
+		e.mul(t)
+		e.add(a)
+		return &e, &e
+	}
+
+	// fmt.Println(s0, s1, t0, t1)
+	// fmt.Println(s.RatString(), t.RatString())
+
+	// check for T intersection
+	if s0 == 0 && t0 > 0 && t1 < 0 {
+		// c touchs ab
+		// fmt.Println("c touchs ab")
+		return new(vec).copy(c), nil
+	}
+	if s1 == 0 && t0 > 0 && t1 < 0 {
+		// d touchs ab
+		// fmt.Println("d touchs ab")
+		return new(vec).copy(d), nil
+	}
+	if t0 == 0 && s0 > 0 && s1 < 0 {
+		// a touchs cd
+		// fmt.Println("a touchs cd")
+		return nil, new(vec).copy(a)
+	}
+	if t1 == 0 && s0 > 0 && s1 < 0 {
+		// b touchs cd
+		// fmt.Println("b touchs cd")
+		return nil, new(vec).copy(b)
+	}
+
+	// fmt.Println("no intersection")
+	return nil, nil
+}
+
 func (p *polygon) inUnitSquare() bool {
 	for _, v := range p.vertices {
 		if v.x.Cmp(zero) < 0 || v.x.Cmp(one) > 0 ||
@@ -482,6 +547,40 @@ func (s *skeleton) getPolygon(facet []int) *polygon {
 	return &p
 }
 
+func (s *skeleton) addIntersections() {
+	oldlines := s.lines
+	for i := range oldlines {
+		line1 := oldlines[i]
+		a := &s.vertices[line1.a]
+		b := &s.vertices[line1.b]
+		for _, line2 := range oldlines[i+1:] {
+			c := &s.vertices[line2.a]
+			d := &s.vertices[line2.b]
+			v1, v2 := getIntersection(a, b, c, d)
+			if v1 != nil {
+				// fmt.Println("line", line1.a, line1.b, "is intersected by line", line2.a, line2.b)
+				iv := s.addVertex(v1)
+				s.addLine(&line{line1.a, iv})
+				s.addLine(&line{line1.b, iv})
+				// s.lines = append(s.lines, line{line1.a, iv}, line{line1.b, iv})
+			}
+			if v2 != nil {
+				// fmt.Println("line", line1.a, line1.b, "intersects line", line2.a, line2.b)
+				iv := s.addVertex(v2)
+				s.addLine(&line{line2.a, iv})
+				s.addLine(&line{line2.b, iv})
+				// s.lines = append(s.lines, line{line2.a, iv}, line{line2.b, iv})
+			}
+		}
+	}
+}
+
+func (s *skeleton) addLine(l *line) {
+	if s.findLine(l) < 0 {
+		s.lines = append(s.lines, *l)
+	}
+}
+
 func facetsEqual(a, b []int) bool {
 	na, nb := len(a), len(b)
 	if na != nb {
@@ -547,6 +646,13 @@ func facetsHaveLine(facets [][]int, l *line) bool {
 		}
 	}
 	return false
+}
+
+func findsqrt(a *big.Rat) *big.Rat {
+	n := mathutil.SqrtBig(a.Num())
+	d := mathutil.SqrtBig(a.Denom())
+
+	return new(big.Rat).SetFrac(n, d)
 }
 
 func linestrip2str(strip []int) string {

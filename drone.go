@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"math"
 	"strings"
 )
 
@@ -41,7 +40,7 @@ func (dr *drone) solve(prob *problem) *solution {
 	for i := 0; i < n; i++ {
 		for _, f := range flags {
 			s := dr.search(i, f.flip, f.rotate)
-			if s != nil && !s.inexact {
+			if s != nil && !s.incomplete {
 				return s
 			} else if s != nil {
 				c = s
@@ -60,7 +59,12 @@ func (dr *drone) reset() {
 
 func (dr *drone) search(startline int, rotate, flip bool) *solution {
 
-	dr.reset()
+	defer func() {
+		dr.reset()
+		if r := recover(); r != nil {
+			fmt.Println(r)
+		}
+	}()
 
 	dstline := dr.problem.skeleton.lines[startline]
 	var v, d vec
@@ -84,14 +88,16 @@ func (dr *drone) search(startline int, rotate, flip bool) *solution {
 	// prob.translate(&v)
 
 	// calculate length of (a,b)
-	dlen := d.dot(&d)
+	dlen := findsqrt(d.dot(&d))
 	// weak spot of alogrithm
-	// TODO: check inexact conversion
-	f, exact := dlen.Float64()
-	dlen.SetFloat64(math.Sqrt(f))
+	// // TODO: check inexact conversion
+	// f, exact := dlen.Float64()
+	// dlen.SetFloat64(math.Sqrt(f))
 	// if !exact {
-	// 	// try to calc separately
-	// } else {
+	//  	// try to simplify dlen
+	//     if
+	// }
+	//  else {
 	//
 	// }
 
@@ -112,23 +118,38 @@ func (dr *drone) search(startline int, rotate, flip bool) *solution {
 		fmt.Println("problem:\n", dr.problem.String())
 		fmt.Println("start", startline, "flip", flip, "rotate", rotate)
 	}
-
-	if dr.debug && !exact {
-		fmt.Println("inexact")
-	}
 	// fmt.Println("start:\n", dr.String())
 
 	dr.indentstr = "    "
 	if dr.addFacets(&line{0, 1}, flip) {
+
+		incomplete := !dr.checkComplete()
+
+		if dr.debug && incomplete {
+			fmt.Println("incomplete")
+		}
+
 		return &solution{
 			copyVecSlice(dr.srcpoints),
 			copyVecSlice(dr.dstpoints),
 			copyFacets(dr.srcfacets),
-			!exact,
+			incomplete,
 		}
 	}
 	return nil
 }
+
+/*
+func (dr *drone) removeIntermediateVertices() {
+	var remove []int
+	for _, p := range dr.polygons {
+
+	}
+
+    for _, i := range remove {
+
+    }
+}*/
 
 func (dr *drone) addFacets(srcline *line, flip bool) bool {
 
@@ -189,13 +210,16 @@ func (dr *drone) addFacets(srcline *line, flip bool) bool {
 				dr.print()
 			}
 
+			nsrcfacet := len(dr.srcfacets) - 1
+
 			n := len(srcfacet)
 			i1, i2 := n-1, 0
 			for ; i2 < n; i2++ {
 				sline := line{srcfacet[i2], srcfacet[i1]}
 				i1 = i2
 				// check if line is already in other facets
-				if facetsHaveLine(dr.srcfacets[:len(dr.srcfacets)-1], &sline) {
+				if facetsHaveLine(dr.srcfacets[:nsrcfacet], &sline) ||
+					facetsHaveLine(dr.srcfacets[nsrcfacet+1:], &sline) {
 					if dr.debug {
 						dr.println("line", sline.a, sline.b, "already processed")
 					}
@@ -225,7 +249,7 @@ func (dr *drone) addFacets(srcline *line, flip bool) bool {
 				dr.println(i2, "/", n)
 			}
 
-			if i2 == n {
+			if i2 == n && dr.checkComplete() {
 				if dr.debug {
 					dr.println("succeeded")
 				}
@@ -395,6 +419,36 @@ func (dr *drone) addPoint(p *vec) (int, bool) {
 	r := len(dr.srcpoints)
 	dr.srcpoints = append(dr.srcpoints, *p)
 	return r, true
+}
+
+func (dr *drone) containsDstPoint(p *vec) bool {
+	// if dr.debug {
+	// 	dr.println("check for", p.String())
+	// }
+	for i := range dr.dstpoints {
+		if p.equals(&dr.dstpoints[i]) {
+			// dr.println("found at", i)
+			return true
+		}
+	}
+
+	if dr.debug {
+		dr.println("missing", p.String())
+	}
+
+	return false
+}
+
+func (dr *drone) checkComplete() bool {
+	// check if all polygon points have been used
+	for _, p := range dr.problem.polygons {
+		for _, v := range p.vertices {
+			if !dr.containsDstPoint(&v) {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func (dr *drone) String() string {
