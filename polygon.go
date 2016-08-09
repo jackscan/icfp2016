@@ -548,12 +548,11 @@ func (s *skeleton) getPolygon(facet []int) *polygon {
 }
 
 func (s *skeleton) addIntersections() {
-	oldlines := s.lines
-	for i := range oldlines {
-		line1 := oldlines[i]
+	for i := 0; i < len(s.lines); i++ {
+		line1 := s.lines[i]
 		a := &s.vertices[line1.a]
 		b := &s.vertices[line1.b]
-		for _, line2 := range oldlines[i+1:] {
+		for _, line2 := range s.lines[i+1:] {
 			c := &s.vertices[line2.a]
 			d := &s.vertices[line2.b]
 			v1, v2 := getIntersection(a, b, c, d)
