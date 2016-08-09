@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -41,15 +40,16 @@ func main() {
 			spath := strings.TrimPrefix(filename, "problem-")
 			spath = soldir + "/solution-" + spath
 
+			log.Print("reading", ppath)
 			prob := readProblem(ppath)
 
 			wg.Add(1)
 			go func(prob *problem, sname string) {
 				defer wg.Done()
 				if solve(prob, sname, false) {
-					fmt.Println(ppath, "->", sname)
+					log.Print(ppath, "->", sname)
 				} else {
-					fmt.Println("failed to solve", pname)
+					log.Print("failed to solve", ppath)
 				}
 			}(prob, spath)
 		}
